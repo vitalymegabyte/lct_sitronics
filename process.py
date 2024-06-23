@@ -9,7 +9,9 @@ import cv2
 from modules.xfeat import XFeat
 
 # опытным путем установлено, что лучше всего приближение размеров достигается вот так :)
-MINIFY_CONSTANT = 8
+MINIFY_CONSTANT = 9
+
+DRAW_IMG = False
 
 xfeat = XFeat()
 
@@ -96,24 +98,48 @@ def geo_to_pixel(geo_transform, geo_x, geo_y):
 
 def corner_coords(im1_name, im2_name) -> Tuple[tuple, str, datetime, datetime]:
 
-    im1, geo_transform1, epsg1 = read_img(im1_name)
-    im2, geo_transform2, epsg2 = read_img(im2_name)
+    im1_data = read_img(im1_name)
+    im2_data = read_img(im2_name)
 
     start_time = datetime.now()
 
-    im2_to_process = im2[::MINIFY_CONSTANT, ::MINIFY_CONSTANT, :]
+    im2_to_process = im2_data["image"][::MINIFY_CONSTANT, ::MINIFY_CONSTANT, :]
     # Use out-of-the-box function for extraction + MNN matching
-    mkpts_0, mkpts_1 = xfeat.match_xfeat(im1, im2_to_process, top_k=4096)
+    mkpts_0, mkpts_1 = xfeat.match_xfeat(
+        im1_data["image"], im2_to_process, top_k=24576, min_cossim=0.5
+    )
 
-    corners = get_corners_coordinates(mkpts_0, mkpts_1, im1, im2)
+    corners = get_corners_coordinates(
+        mkpts_0, mkpts_1, im1_data["image"], im2_data["image"]
+    )
+
+    if DRAW_IMG:
+        corners_draw = [c[0] for c in corners.tolist()]
+
+        # Преобразуем список точек в формат, подходящий для функции cv2.polylines
+        points = np.array(corners_draw, np.int32)
+        points = points.reshape((-1, 1, 2))
+
+        # Рисуем многоугольник на изображении
+        drawed_im2 = cv2.polylines(
+            np.array(im2_to_process),
+            [points],
+            isClosed=True,
+            color=(0, 255, 0),
+            thickness=3,
+        )
+        cv2.imwrite(
+            f"examples/crop_{im1_name.split('/')[-1][5:9]}_{im2_name.split('/')[-1][:-4]}.png",
+            drawed_im2,
+        )
 
     corners *= MINIFY_CONSTANT
 
     corners_coordinates = [
-        pixel_to_geo(geo_transform2, c[0][0], c[0][1]) for c in corners
+        pixel_to_geo(im2_data["geo_transform"], c[0][0], c[0][1]) for c in corners
     ]
     end_time = datetime.now()
-    return corners_coordinates, epsg2, start_time, end_time
+    return corners_coordinates, im2_data["epsg"], start_time, end_time
 
 
 if __name__ == "__main__":

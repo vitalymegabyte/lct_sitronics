@@ -25,9 +25,9 @@ def process_band(band: np.uint16) -> np.uint8:
     return band.astype(np.uint8)
 
 
-def read_img(im_path: str) -> Tuple[np.uint8, Any]:
+def read_img(im_path: str) -> dict[str, Any]:
     dataset = gdal.Open(im_path)
-
+    print(im_path)
     # Читаем данные из нужных каналов (предполагаем, что RGB находятся в каналах 1, 2 и 3)
     r_band = dataset.GetRasterBand(1).ReadAsArray()
     g_band = dataset.GetRasterBand(2).ReadAsArray()
@@ -46,7 +46,7 @@ def read_img(im_path: str) -> Tuple[np.uint8, Any]:
 
     epsg = re.search(EPSG_REGEX, dataset.GetProjection()).groups(1)[0]
 
-    return rgb_image, geo_transform, epsg
+    return {"image": rgb_image, "geo_transform": geo_transform, "epsg": epsg}
 
 
 if __name__ == "__main__":
@@ -54,5 +54,4 @@ if __name__ == "__main__":
 
     im_path = sys.argv[-1]
     rgb_image = read_img(im_path)
-
-    cv.imwrite("image2.png", rgb_image)
+    cv.imwrite("image2.png", rgb_image[0])
