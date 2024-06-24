@@ -2,7 +2,7 @@ from osgeo import gdal
 import sys
 import cv2 as cv
 import numpy as np
-from typing import Any, Tuple
+from typing import Any, Tuple, Dict
 import re
 
 EPSG_REGEX = r"AUTHORITY\[\"EPSG\",\"([\d]+)\"\]\]$"
@@ -25,7 +25,7 @@ def process_band(band: np.uint16) -> np.uint8:
     return band.astype(np.uint8)
 
 
-def read_img(im_path: str) -> dict[str, Any]:
+def read_img(im_path: str) -> Dict[str, Any]:
     dataset = gdal.Open(im_path)
     print(im_path)
     # Читаем данные из нужных каналов (предполагаем, что RGB находятся в каналах 1, 2 и 3)
